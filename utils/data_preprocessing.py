@@ -21,24 +21,49 @@ def load_ohlcv(filepath: str) -> pd.DataFrame:
     """Load 1-minute OHLCV data from CSV."""
     df = pd.read_csv(filepath)
 
+    # Strip BOM and whitespace from column names
+    df.columns = [c.strip().lstrip('\ufeff') for c in df.columns]
+
     # Handle different column naming conventions
     col_map = {}
     for col in df.columns:
         cl = col.lower().strip()
-        if cl in ['timestamp', 'time', 'date', 'datetime', 'open_time']:
+        if cl in ['timestamp', 'time', 'date', 'datetime', 'open_time', 't',
+                   'unix', 'epoch', 'ts', 'candle_time', 'start_time']:
             col_map[col] = 'timestamp'
-        elif cl == 'open':
+        elif cl == 'open' or cl == 'o':
             col_map[col] = 'open'
-        elif cl == 'high':
+        elif cl == 'high' or cl == 'h':
             col_map[col] = 'high'
-        elif cl == 'low':
+        elif cl == 'low' or cl == 'l':
             col_map[col] = 'low'
-        elif cl == 'close':
+        elif cl == 'close' or cl == 'c':
             col_map[col] = 'close'
-        elif cl in ['volume', 'vol']:
+        elif cl in ['volume', 'vol', 'v']:
             col_map[col] = 'volume'
 
     df = df.rename(columns=col_map)
+
+    # If no timestamp column found, try using the first column or the index
+    if 'timestamp' not in df.columns:
+        # Check if first column looks like a timestamp
+        first_col = df.columns[0]
+        first_val = df[first_col].iloc[0]
+        if isinstance(first_val, (int, float, np.integer, np.floating)) and first_val > 1e8:
+            df = df.rename(columns={first_col: 'timestamp'})
+            print(f"  Note: Using column '{first_col}' as timestamp")
+        else:
+            # Try parsing the first column as a date
+            try:
+                pd.to_datetime(df[first_col].iloc[:5])
+                df = df.rename(columns={first_col: 'timestamp'})
+                print(f"  Note: Using column '{first_col}' as timestamp")
+            except Exception:
+                raise KeyError(
+                    f"Could not find a timestamp column. "
+                    f"Columns found: {list(df.columns)}. "
+                    f"Expected one of: timestamp, time, date, datetime, open_time, t"
+                )
 
     # Convert timestamp to datetime
     if df['timestamp'].dtype in ['int64', 'float64']:
@@ -67,15 +92,26 @@ def load_funding_rate(filepath: str) -> pd.Series:
     """Load funding rate data from CSV."""
     df = pd.read_csv(filepath)
 
+    # Strip BOM and whitespace from column names
+    df.columns = [c.strip().lstrip('\ufeff') for c in df.columns]
+
     col_map = {}
     for col in df.columns:
         cl = col.lower().strip()
-        if cl in ['timestamp', 'time', 'date', 'datetime', 'calc_time', 'funding_time']:
+        if cl in ['timestamp', 'time', 'date', 'datetime', 'calc_time',
+                   'funding_time', 't', 'ts', 'open_time', 'start_time']:
             col_map[col] = 'timestamp'
-        elif cl in ['funding_rate', 'fundingrate', 'rate', 'funding']:
+        elif cl in ['funding_rate', 'fundingrate', 'rate', 'funding',
+                     'funding_rate_annualized', 'fr']:
             col_map[col] = 'funding_rate'
 
     df = df.rename(columns=col_map)
+
+    # If no timestamp column found, use first column
+    if 'timestamp' not in df.columns:
+        first_col = df.columns[0]
+        df = df.rename(columns={first_col: 'timestamp'})
+        print(f"  Note: Using column '{first_col}' as funding timestamp")
 
     if df['timestamp'].dtype in ['int64', 'float64']:
         if df['timestamp'].iloc[0] > 1e12:
