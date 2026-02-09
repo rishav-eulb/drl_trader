@@ -203,8 +203,9 @@ class CryptoTradingEnv(gym.Env):
     def _execute_action(self, action: int, ct: float):
         """Execute the trading action and update state."""
         if action == ACTION_LONG and self.position == POSITION_NONE:
-            self.balance = self.balance * (1 - self.tc)
-            self.coins_held = self.balance / ct
+            investable = self.balance * (1 - self.tc)
+            self.coins_held = investable / ct
+            self.balance = 0.0  # All cash spent on coins
             self.position = POSITION_LONG
 
         elif action == ACTION_SHORT and self.position == POSITION_NONE:
@@ -214,10 +215,12 @@ class CryptoTradingEnv(gym.Env):
 
         elif action == ACTION_CLOSE:
             if self.position == POSITION_LONG:
-                self.balance = self.balance + self.coins_held * ct * (1 - self.tc)
+                # balance is 0 during long; sell coins to get cash back
+                self.balance = self.coins_held * ct * (1 - self.tc)
                 self.coins_held = 0.0
                 self.position = POSITION_NONE
             elif self.position == POSITION_SHORT:
+                # balance includes margin + short proceeds; buy back coins
                 self.balance = self.balance - self.coins_held * ct * (1 - self.tc)
                 self.coins_held = 0.0
                 self.position = POSITION_NONE

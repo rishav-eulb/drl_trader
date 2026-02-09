@@ -1,0 +1,43 @@
+# Large data files
+*.csv
+*.parquet
+*.h5
+*.hdf5
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models and checkpoints
+*.pkl
+*.pickle
+*.ckpt
+*.h5
+models/
+checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Data directories with large files
+data/raw/
+data/processed/
+
